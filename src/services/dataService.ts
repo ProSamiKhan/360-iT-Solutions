@@ -63,6 +63,64 @@ export const updateRepairStatus = async (repairId: string, status: Repair['statu
   });
 };
 
+export const deleteClient = async (clientId: string) => {
+  // In a real app, we might want to delete associated repairs too, but for now just client
+  const { deleteDoc } = await import('firebase/firestore');
+  return deleteDoc(doc(db, 'clients', clientId));
+};
+
+export const seedDemoData = async () => {
+  const firstNames = ['Amit', 'Sriya', 'Vikram', 'Ananya', 'Zaid', 'Priya', 'Rohan', 'Sneha', 'Arjun', 'Meera', 'Rahul', 'Deepa', 'Karan', 'Neha', 'Aditya', 'Ishani', 'Suresh', 'Kavita', 'Rajesh', 'Pooja', 'Manish', 'Aarti', 'Sunil', 'Jyoti', 'Vijay'];
+  const lastNames = ['Patel', 'Reddy', 'Singh', 'Iyer', 'Khan', 'Sharma', 'Gupta', 'Kapoor', 'Verma', 'Nair', 'Malhotra', 'Joshi', 'Chopra', 'Deshmukh', 'Bose', 'Das', 'Kulkarni', 'Pillai', 'Rao', 'Mehta', 'Pandey', 'Trivedi', 'Saxena', 'Gill', 'Yadav'];
+
+  const repairTypes = ['Hardware Repair', 'Software Installation', 'Virus Removal', 'Data Recovery', 'Networking Setup'];
+  const statuses: Repair['status'][] = ['Received', 'Diagnosing', 'Repairing', 'Waiting Parts', 'Completed', 'Delivered'];
+
+  for (let i = 0; i < 25; i++) {
+    const firstName = firstNames[i % firstNames.length];
+    const lastName = lastNames[i % lastNames.length];
+    const name = `${firstName} ${lastName}`;
+    const phone = `9${Math.floor(100000000 + Math.random() * 900000000)}`;
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`;
+    
+    const clientRef = await addClient({
+      name,
+      phone,
+      email,
+      address: `${Math.floor(Math.random() * 100 + 1)}, Tech Park, City ${i}`
+    });
+    
+    // Add 1-2 repairs for each client
+    const numRepairs = Math.floor(Math.random() * 2) + 1;
+    for (let j = 0; j < numRepairs; j++) {
+      const repairType = repairTypes[Math.floor(Math.random() * repairTypes.length)];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      
+      const repairRef = await addRepair({
+        clientId: clientRef.id,
+        deviceId: 'Device-' + Math.random().toString(36).substring(7).toUpperCase(),
+        problemDescription: `Automatic diagnostic for ${repairType} - Issue #${i}${j}`,
+        serviceType: repairType,
+        status: status,
+        remarks: 'System generated demo data'
+      });
+
+      if (status === 'Completed' || status === 'Delivered') {
+        await addInvoice({
+          repairId: repairRef.id,
+          clientId: clientRef.id,
+          serviceCharge: 500 + Math.floor(Math.random() * 2000),
+          partsCost: Math.floor(Math.random() * 1500),
+          discount: 0,
+          totalAmount: 2000 + Math.floor(Math.random() * 3000),
+          paymentStatus: Math.random() > 0.3 ? 'Paid' : 'Pending',
+          paymentMethod: 'UPI'
+        });
+      }
+    }
+  }
+};
+
 // Invoices
 export const getInvoices = (callback: (invoices: Invoice[]) => void) => {
   return onSnapshot(query(collection(db, 'invoices'), orderBy('createdAt', 'desc')), (snapshot) => {

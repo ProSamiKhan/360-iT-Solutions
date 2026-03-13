@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import { UserProfile, Client, Repair, Invoice, Technician } from '../types';
-import { getStats, getClients, getRepairs, getInvoices, getTechnicians, addClient, addRepair } from '../services/dataService';
+import { 
+  getStats, 
+  getClients, 
+  getRepairs, 
+  getInvoices, 
+  getTechnicians, 
+  addClient, 
+  addRepair, 
+  updateRepairStatus, 
+  deleteClient, 
+  seedDemoData 
+} from '../services/dataService';
 import { 
   Users, 
   Wrench, 
@@ -58,10 +69,29 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
 
 function Overview() {
   const [stats, setStats] = useState<any>(null);
+  const [seeding, setSeeding] = useState(false);
+  const navigate = useNavigate();
   
   useEffect(() => {
     getStats().then(setStats);
   }, []);
+
+  const handleSeedData = async () => {
+    if (confirm('This will add 10 demo clients and several repairs. Continue?')) {
+      setSeeding(true);
+      try {
+        await seedDemoData();
+        const newStats = await getStats();
+        setStats(newStats);
+        alert('Demo data seeded successfully!');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to seed data.');
+      } finally {
+        setSeeding(false);
+      }
+    }
+  };
 
   const revenueData = [
     { name: 'Mon', revenue: 4000, repairs: 12 },
@@ -105,10 +135,20 @@ function Overview() {
           <p className="text-slate-500 font-medium">Real-time operational intelligence for 360 iT Solutions.</p>
         </div>
         <div className="flex gap-3 w-full md:w-auto">
+          <button 
+            onClick={handleSeedData}
+            disabled={seeding}
+            className="flex-1 md:flex-none bg-indigo-50 text-indigo-600 border border-indigo-100 px-6 py-3 rounded-2xl text-sm font-bold hover:bg-indigo-100 transition-all shadow-sm disabled:opacity-50"
+          >
+            {seeding ? 'Seeding...' : 'Seed 25 Clients'}
+          </button>
           <button className="flex-1 md:flex-none bg-white border border-slate-200 px-6 py-3 rounded-2xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm">
             Export Data
           </button>
-          <button className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200">
+          <button 
+            onClick={() => navigate('/repairs')}
+            className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
+          >
             <Plus className="w-4 h-4" /> New Job
           </button>
         </div>
@@ -226,6 +266,7 @@ function ClientsList() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [newClient, setNewClient] = useState({ name: '', phone: '', email: '', address: '' });
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   useEffect(() => {
     return getClients((data) => {
@@ -242,6 +283,17 @@ function ClientsList() {
       setNewClient({ name: '', phone: '', email: '', address: '' });
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    if (confirm('Are you sure you want to delete this client?')) {
+      try {
+        await deleteClient(id);
+        setActiveMenu(null);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -360,10 +412,30 @@ function ClientsList() {
                   <td className="px-8 py-6">
                     <span className="text-xs font-bold text-slate-400">{new Date(client.createdAt).toLocaleDateString()}</span>
                   </td>
-                  <td className="px-8 py-6 text-right">
-                    <button className="p-3 hover:bg-white rounded-xl transition-all text-slate-300 hover:text-indigo-600 shadow-sm border border-transparent hover:border-slate-100">
+                  <td className="px-8 py-6 text-right relative">
+                    <button 
+                      onClick={() => setActiveMenu(activeMenu === client.id ? null : client.id)}
+                      className="p-3 hover:bg-white rounded-xl transition-all text-slate-300 hover:text-indigo-600 shadow-sm border border-transparent hover:border-slate-100"
+                    >
                       <MoreVertical className="w-5 h-5" />
                     </button>
+                    <AnimatePresence>
+                      {activeMenu === client.id && (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                          className="absolute right-8 top-16 z-10 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2"
+                        >
+                          <button 
+                            onClick={() => handleDeleteClient(client.id)}
+                            className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                          >
+                            Delete Client
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </td>
                 </tr>
               ))}
@@ -379,6 +451,7 @@ function RepairsList() {
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState<Repair | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [newRepair, setNewRepair] = useState({
     clientId: '',
@@ -410,6 +483,15 @@ function RepairsList() {
         status: 'Received',
         remarks: ''
       });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateStatus = async (repairId: string, status: Repair['status']) => {
+    try {
+      await updateRepairStatus(repairId, status);
+      setShowStatusModal(null);
     } catch (err) {
       console.error(err);
     }
@@ -533,7 +615,10 @@ function RepairsList() {
                   <button className="p-4 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100">
                     <FileText className="w-5 h-5" />
                   </button>
-                  <button className="px-6 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+                  <button 
+                    onClick={() => setShowStatusModal(repair)}
+                    className="px-6 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                  >
                     Update Status
                   </button>
                 </div>
@@ -542,6 +627,39 @@ function RepairsList() {
           </motion.div>
         ))}
       </div>
+
+      <AnimatePresence>
+        {showStatusModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black text-slate-900">Update Status</h3>
+                <button onClick={() => setShowStatusModal(null)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                {['Received', 'Diagnosing', 'Repairing', 'Waiting Parts', 'Completed', 'Delivered'].map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => handleUpdateStatus(showStatusModal.id, status as Repair['status'])}
+                    className={`w-full py-4 rounded-2xl font-black text-sm transition-all ${
+                      showStatusModal.status === status 
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
