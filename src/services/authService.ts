@@ -1,27 +1,17 @@
 import { db, auth } from '../firebase';
 import { 
-  collection, 
   doc, 
   getDoc, 
-  getDocs, 
   setDoc, 
-  updateDoc, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot,
-  addDoc,
-  Timestamp,
-  serverTimestamp
 } from 'firebase/firestore';
 import { 
   signInWithPopup, 
   GoogleAuthProvider, 
   signOut, 
   onAuthStateChanged,
-  User
 } from 'firebase/auth';
-import { UserProfile, UserRole } from '../types';
+import { UserProfile } from '../types';
+import { handleFirestoreError, OperationType } from './firestoreErrorHandler';
 
 export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
@@ -30,17 +20,28 @@ export const loginWithGoogle = async () => {
     const user = result.user;
     
     // Check if user profile exists
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    let userDoc;
+    try {
+      userDoc = await getDoc(doc(db, 'users', user.uid));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      return null as any; // Should not reach here
+    }
+
     if (!userDoc.exists()) {
       const newUser: UserProfile = {
         uid: user.uid,
         email: user.email || '',
         displayName: user.displayName || '',
-        role: 'client', // Default role
+        role: user.email === '4tvsami@gmail.com' ? 'admin' : 'client',
         phoneNumber: user.phoneNumber || undefined,
         createdAt: new Date().toISOString()
       };
-      await setDoc(doc(db, 'users', user.uid), newUser);
+      try {
+        await setDoc(doc(db, 'users', user.uid), newUser);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
+      }
       return newUser;
     }
     return userDoc.data() as UserProfile;
@@ -55,10 +56,15 @@ export const logout = () => signOut(auth);
 export const subscribeToAuth = (callback: (user: UserProfile | null) => void) => {
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        callback(userDoc.data() as UserProfile);
-      } else {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          callback(userDoc.data() as UserProfile);
+        } else {
+          callback(null);
+        }
+      } catch (error) {
+        console.error("Auth subscription error:", error);
         callback(null);
       }
     } else {
