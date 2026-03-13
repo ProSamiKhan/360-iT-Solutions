@@ -1,0 +1,118 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "Application user with role-based access.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "client"] },
+        "phoneNumber": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "clients": {
+      "title": "Client",
+      "description": "Customer profile managed by admin.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phone"]
+    },
+    "devices": {
+      "title": "Device",
+      "description": "A computer or device registered for repair.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "type": { "type": "string", "enum": ["Laptop", "Desktop", "Other"] },
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "serialNumber": { "type": "string" },
+        "condition": { "type": "string" },
+        "accessories": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clientId", "type", "brand", "model"]
+    },
+    "repairs": {
+      "title": "Repair Job",
+      "description": "A specific repair task.",
+      "type": "object",
+      "properties": {
+        "trackingId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "problemDescription": { "type": "string" },
+        "serviceType": { "type": "string" },
+        "status": { "type": "string", "enum": ["Received", "Diagnosing", "Repairing", "Waiting Parts", "Completed", "Delivered"] },
+        "technicianId": { "type": "string" },
+        "remarks": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["trackingId", "clientId", "deviceId", "status"]
+    },
+    "invoices": {
+      "title": "Invoice",
+      "description": "Billing document for a repair.",
+      "type": "object",
+      "properties": {
+        "repairId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "serviceCharge": { "type": "number" },
+        "partsCost": { "type": "number" },
+        "discount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["Paid", "Pending", "Partial"] },
+        "paymentMethod": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["repairId", "clientId", "invoiceNumber", "totalAmount"]
+    },
+    "technicians": {
+      "title": "Technician",
+      "description": "Staff member performing repairs.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "specialization": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["name"]
+    },
+    "ratings": {
+      "title": "Rating",
+      "description": "Customer feedback on service.",
+      "type": "object",
+      "properties": {
+        "repairId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "score": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["repairId", "score"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "users", "description": "User profiles" },
+    "/clients/{clientId}": { "schema": "clients", "description": "Client database" },
+    "/devices/{deviceId}": { "schema": "devices", "description": "Device registry" },
+    "/repairs/{repairId}": { "schema": "repairs", "description": "Repair jobs" },
+    "/invoices/{invoiceId}": { "schema": "invoices", "description": "Billing records" },
+    "/technicians/{techId}": { "schema": "technicians", "description": "Staff registry" },
+    "/ratings/{ratingId}": { "schema": "ratings", "description": "Service feedback" }
+  }
+}
