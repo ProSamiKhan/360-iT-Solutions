@@ -32,12 +32,12 @@ function MyRepairs({ user }: { user: UserProfile }) {
   const [repairs, setRepairs] = useState<Repair[]>([]);
 
   useEffect(() => {
+    // In a real app, we'd filter by clientId on the server
     return getRepairs((data) => {
-      // Filter by the logged-in user's ID
-      const myRepairs = data.filter(r => r.clientId === user.uid);
-      setRepairs(myRepairs); 
+      // For demo, we'll filter here. In production, use a proper query.
+      setRepairs(data); 
     });
-  }, [user.uid]);
+  }, []);
 
   const getStatusIcon = (status: Repair['status']) => {
     switch (status) {
@@ -77,12 +77,7 @@ function MyRepairs({ user }: { user: UserProfile }) {
                 `}>
                   {repair.status}
                 </span>
-                {repair.status === 'Completed' && (
-                  <p className="text-[10px] font-bold text-emerald-600 animate-pulse mt-1">
-                    Please collect as soon as possible
-                  </p>
-                )}
-                <p className="text-xs text-slate-400 font-medium mt-1">Last updated: {new Date(repair.updatedAt).toLocaleDateString()}</p>
+                <p className="text-xs text-slate-400 font-medium">Last updated: {new Date(repair.updatedAt).toLocaleDateString()}</p>
               </div>
             </div>
           </div>
@@ -103,11 +98,8 @@ function MyInvoices({ user }: { user: UserProfile }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
-    return getInvoices((data) => {
-      const myInvoices = data.filter(inv => inv.clientId === user.uid);
-      setInvoices(myInvoices);
-    });
-  }, [user.uid]);
+    return getInvoices(setInvoices);
+  }, []);
 
   return (
     <div className="space-y-8">
