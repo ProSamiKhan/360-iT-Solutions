@@ -6,6 +6,7 @@ import { subscribeToAuth } from './services/authService';
 // Pages
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
+import LoginCallback from './pages/LoginCallback';
 import AdminDashboard from './pages/AdminDashboard';
 import ClientDashboard from './pages/ClientDashboard';
 import TrackingPage from './pages/TrackingPage';
@@ -36,6 +37,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={user ? <Navigate to={user.role === 'admin' ? '/admin' : '/client'} /> : <LoginPage />} />
+        <Route path="/login-callback" element={<LoginCallback />} />
         <Route path="/track" element={<TrackingPage />} />
         
         {/* Admin Routes */}

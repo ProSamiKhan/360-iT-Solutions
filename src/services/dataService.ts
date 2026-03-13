@@ -38,6 +38,12 @@ export const getRepairs = (callback: (repairs: Repair[]) => void) => {
   });
 };
 
+export const getRepairsByClientId = async (clientId: string) => {
+  const q = query(collection(db, 'repairs'), where('clientId', '==', clientId), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Repair));
+};
+
 export const getRepairByTrackingId = async (trackingId: string) => {
   const q = query(collection(db, 'repairs'), where('trackingId', '==', trackingId), limit(1));
   const snapshot = await getDocs(q);
