@@ -5,6 +5,8 @@ import { loginWithGoogle } from '../services/authService';
 import { useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -14,12 +16,26 @@ export default function LoginPage() {
     setError(null);
     try {
       const user = await loginWithGoogle();
-      navigate(user.role === 'admin' ? '/admin' : '/client');
-    } catch (err) {
-      setError("Failed to login with Google. Please try again.");
+      if (user) {
+        navigate(user.role === 'admin' ? '/admin' : '/client');
+      }
+    } catch (err: any) {
+      console.error("Google Login Error:", err);
+      if (err.code === 'auth/popup-blocked') {
+        setError("Popup blocked! Please allow popups or open the app in a new tab.");
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError("This domain is not authorized in Firebase. Please add it to 'Authorized Domains'.");
+      } else {
+        setError(err.message || "Failed to login with Google. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("Email/Password login is not enabled yet. Please use 'Continue with Google'.");
   };
 
   return (
@@ -63,12 +79,14 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <form onSubmit={handleEmailLogin} className="space-y-3">
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input 
                   type="email" 
                   placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 transition-all text-sm"
                 />
               </div>
@@ -77,13 +95,18 @@ export default function LoginPage() {
                 <input 
                   type="password" 
                   placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 transition-all text-sm"
                 />
               </div>
-              <button className="w-full bg-indigo-600 text-white py-3.5 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2">
+              <button 
+                type="submit"
+                className="w-full bg-indigo-600 text-white py-3.5 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+              >
                 Sign In <ArrowRight className="w-4 h-4" />
               </button>
-            </div>
+            </form>
           </div>
 
           <div className="text-center">

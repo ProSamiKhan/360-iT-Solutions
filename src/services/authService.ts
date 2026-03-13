@@ -34,7 +34,7 @@ export const loginWithGoogle = async () => {
         email: user.email || '',
         displayName: user.displayName || '',
         role: user.email === '4tvsami@gmail.com' ? 'admin' : 'client',
-        phoneNumber: user.phoneNumber || undefined,
+        phoneNumber: user.phoneNumber || null,
         createdAt: new Date().toISOString()
       };
       try {
