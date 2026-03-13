@@ -9,92 +9,59 @@ import {
   GoogleAuthProvider, 
   signOut, 
   onAuthStateChanged,
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink
+  signInAnonymously,
+  signInWithCustomToken
 } from 'firebase/auth';
 import { UserProfile } from '../types';
 import { handleFirestoreError, OperationType } from './firestoreErrorHandler';
 
-export const setupRecaptcha = (container: string | HTMLElement) => {
-  if (!auth) {
-    console.error("Auth not initialized");
-    return null;
-  }
-  
-  try {
-    // Check if the container exists if it's a string
-    if (typeof container === 'string' && !document.getElementById(container)) {
-      console.warn(`Recaptcha container with id "${container}" not found yet.`);
-      return null;
-    }
-
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, container, {
-        'size': 'invisible',
-        'callback': () => {
-          // reCAPTCHA solved
-        }
-      });
-    }
-    return (window as any).recaptchaVerifier;
-  } catch (error) {
-    console.error("Recaptcha setup error:", error);
-    return null;
-  }
-};
-
-export const loginWithPhone = async (phoneNumber: string, appVerifier: any) => {
-  if (!auth || !phoneNumber || !appVerifier) {
-    throw new Error("Missing required arguments for phone login");
-  }
-  try {
-    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-    return confirmationResult;
-  } catch (error) {
-    console.error("Phone login error:", error);
-    throw error;
-  }
-};
-
+// Custom Email OTP Auth
 export const sendEmailOTP = async (email: string) => {
-  if (!auth || !email) {
-    throw new Error("Missing auth or email");
-  }
-  const actionCodeSettings = {
-    url: window.location.origin + '/login-callback',
-    handleCodeInApp: true,
-  };
-  try {
-    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    window.localStorage.setItem('emailForSignIn', email);
-  } catch (error) {
-    console.error("Email link error:", error);
-    throw error;
-  }
+  const normalizedEmail = email.trim().toLowerCase();
+  const response = await fetch('/api/auth/send-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: normalizedEmail }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to send OTP');
+  return data;
 };
 
-export const completeEmailLinkSignIn = async () => {
-  if (!auth) return null;
-  if (isSignInWithEmailLink(auth, window.location.href)) {
-    let email = window.localStorage.getItem('emailForSignIn');
-    if (!email) {
-      email = window.prompt('Please provide your email for confirmation');
+export const verifyEmailOTP = async (email: string, otp: string) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const response = await fetch('/api/auth/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: normalizedEmail, otp }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Invalid OTP');
+
+  try {
+    // Sign in with the Custom Token from the server
+    const userResult = await signInWithCustomToken(auth, data.customToken);
+    const uid = userResult.user.uid;
+    
+    // Check if profile exists for this email
+    const userDoc = await getDoc(doc(db, 'users', normalizedEmail));
+    
+    if (!userDoc.exists()) {
+      const newUser: UserProfile = {
+        uid: uid,
+        email: normalizedEmail,
+        displayName: normalizedEmail.split('@')[0],
+        role: normalizedEmail === '4tvsami@gmail.com' ? 'admin' : 'client',
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'users', normalizedEmail), newUser);
+      return newUser;
     }
-    if (email) {
-      try {
-        const result = await signInWithEmailLink(auth, email, window.location.href);
-        window.localStorage.removeItem('emailForSignIn');
-        return result.user;
-      } catch (error) {
-        console.error("Email link sign in error:", error);
-        throw error;
-      }
-    }
+    return userDoc.data() as UserProfile;
+  } catch (error: any) {
+    console.error("OTP Verification Error:", error);
+    throw error;
   }
-  return null;
 };
 
 export const loginWithGoogle = async () => {
@@ -103,29 +70,31 @@ export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
+    const normalizedEmail = user.email?.toLowerCase().trim();
+    const docId = normalizedEmail || user.uid;
     
     // Check if user profile exists
     let userDoc;
     try {
-      userDoc = await getDoc(doc(db, 'users', user.uid));
+      userDoc = await getDoc(doc(db, 'users', docId));
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      handleFirestoreError(error, OperationType.GET, `users/${docId}`);
       return null as any; // Should not reach here
     }
 
     if (!userDoc.exists()) {
       const newUser: UserProfile = {
         uid: user.uid,
-        email: user.email || '',
+        email: normalizedEmail || '',
         displayName: user.displayName || '',
-        role: user.email === '4tvsami@gmail.com' ? 'admin' : 'client',
+        role: normalizedEmail === '4tvsami@gmail.com' ? 'admin' : 'client',
         phoneNumber: user.phoneNumber || null,
         createdAt: new Date().toISOString()
       };
       try {
-        await setDoc(doc(db, 'users', user.uid), newUser);
+        await setDoc(doc(db, 'users', docId), newUser);
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
+        handleFirestoreError(error, OperationType.CREATE, `users/${docId}`);
       }
       return newUser;
     }
@@ -149,21 +118,23 @@ export const subscribeToAuth = (callback: (user: UserProfile | null) => void) =>
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
       try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        // Try to find profile by UID or Email
+        const normalizedEmail = user.email?.toLowerCase().trim();
+        const docId = normalizedEmail || user.uid;
+        const userDoc = await getDoc(doc(db, 'users', docId));
         if (userDoc.exists()) {
           callback(userDoc.data() as UserProfile);
         } else {
-          // Create profile for OTP/Magic Link users
-          const newUser: UserProfile = {
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || user.phoneNumber || 'User',
-            role: (user.email === '4tvsami@gmail.com' || user.phoneNumber === '+919876543210') ? 'admin' : 'client', // Replace with real admin phone if known
-            phoneNumber: user.phoneNumber || null,
-            createdAt: new Date().toISOString()
-          };
-          await setDoc(doc(db, 'users', user.uid), newUser);
-          callback(newUser);
+          // If anonymous but we have email in local storage (from OTP flow)
+          const savedEmail = localStorage.getItem('otp_email')?.toLowerCase().trim();
+          if (savedEmail) {
+            const emailDoc = await getDoc(doc(db, 'users', savedEmail));
+            if (emailDoc.exists()) {
+              callback(emailDoc.data() as UserProfile);
+              return;
+            }
+          }
+          callback(null);
         }
       } catch (error) {
         console.error("Auth subscription error:", error);
