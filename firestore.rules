@@ -2,19 +2,36 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, email, displayName, role, phoneNumber, createdAt
+    //
+    // Collection: clients
+    // Fields: name, email, phone, address, createdAt, updatedAt
+    //
+    // Collection: devices
+    // Fields: clientId, type, brand, model, serialNumber, condition, accessories, createdAt
+    //
+    // Collection: repairs
+    // Fields: trackingId, clientId, deviceId, problemDescription, serviceType, status, technicianId, remarks, createdAt, updatedAt
+    //
+    // Collection: invoices
+    // Fields: repairId, clientId, invoiceNumber, serviceCharge, partsCost, discount, totalAmount, paymentStatus, paymentMethod, createdAt
+    //
+    // ===============================================================
+
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
     function isAdmin() {
       return isAuthenticated() && (
-        getUserData().role == 'admin' || 
-        request.auth.token.email == "4tvsami@gmail.com"
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+        (request.auth.token.email == "4tvsami@gmail.com" && request.auth.token.email_verified == true)
       );
     }
     
@@ -22,11 +39,32 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Domain Validators
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'role', 'phoneNumber', 'createdAt']) &&
+             data.uid is string && data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'client'];
+    }
+
+    function isValidRepair(data) {
+      return hasOnlyAllowedFields(['trackingId', 'clientId', 'deviceId', 'problemDescription', 'serviceType', 'status', 'technicianId', 'remarks', 'createdAt', 'updatedAt']) &&
+             data.trackingId is string && data.status in ['Received', 'Diagnosing', 'Repairing', 'Waiting Parts', 'Completed', 'Delivered'];
+    }
+
     // Users collection
     match /users/{uid} {
       allow read: if isAuthenticated() && (isOwner(uid) || isAdmin());
-      allow create: if isAuthenticated() && isOwner(uid);
-      allow update: if isAuthenticated() && (isOwner(uid) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) && request.resource.data.role == 'client';
+      allow update: if isAuthenticated() && (isOwner(uid) || isAdmin()) && isValidUser(request.resource.data) && 
+                    (isAdmin() || request.resource.data.role == resource.data.role);
     }
 
     // Clients collection
@@ -43,8 +81,8 @@ service cloud.firestore {
 
     // Repairs collection
     match /repairs/{repairId} {
-      allow read: if true; // Allow public tracking by ID
-      allow write: if isAdmin();
+      allow read: if true; // Public tracking
+      allow write: if isAdmin() && isValidRepair(request.resource.data);
     }
 
     // Invoices collection

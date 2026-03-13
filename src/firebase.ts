@@ -5,8 +5,8 @@ import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-// Use the specific database ID from the config
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Use the specific database ID from the config or default
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
 
 // Connection test
 async function testConnection() {
