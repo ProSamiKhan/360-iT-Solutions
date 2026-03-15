@@ -17,8 +17,11 @@ import { Client, Device, Repair, Invoice, Technician, Rating } from '../types';
 
 // Clients
 export const getClients = (callback: (clients: Client[]) => void) => {
-  return onSnapshot(query(collection(db, 'clients'), orderBy('createdAt', 'desc')), (snapshot) => {
-    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Client)));
+  return onSnapshot(collection(db, 'clients'), (snapshot) => {
+    const clients = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Client));
+    // Sort manually if needed, or just return
+    clients.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    callback(clients);
   });
 };
 
@@ -28,6 +31,13 @@ export const addClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updat
     ...client,
     createdAt: now,
     updatedAt: now
+  });
+};
+
+export const updateClient = async (clientId: string, client: Partial<Omit<Client, 'id' | 'createdAt' | 'updatedAt'>>) => {
+  return updateDoc(doc(db, 'clients', clientId), {
+    ...client,
+    updatedAt: new Date().toISOString()
   });
 };
 

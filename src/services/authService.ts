@@ -132,7 +132,23 @@ export const subscribeToAuth = (callback: (user: UserProfile | null) => void) =>
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
-          callback(userDoc.data() as UserProfile);
+          const userData = userDoc.data() as UserProfile;
+          
+          // Ensure client document exists if role is client
+          if (userData.role === 'client') {
+            const clientDoc = await getDoc(doc(db, 'clients', user.uid));
+            if (!clientDoc.exists()) {
+              await setDoc(doc(db, 'clients', user.uid), {
+                name: userData.displayName || 'Unnamed Client',
+                email: userData.email,
+                phone: userData.phoneNumber || '',
+                createdAt: userData.createdAt,
+                updatedAt: userData.createdAt
+              });
+            }
+          }
+          
+          callback(userData);
         } else {
           callback(null);
         }

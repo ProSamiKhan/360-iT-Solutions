@@ -9,6 +9,7 @@ import {
   getInvoices, 
   getTechnicians, 
   addClient, 
+  updateClient,
   addRepair, 
   updateRepairStatus, 
   deleteClient, 
@@ -31,7 +32,11 @@ import {
   Zap,
   Activity,
   Cpu,
-  ShieldCheck
+  ShieldCheck,
+  Eye,
+  Edit2,
+  Trash2,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -265,7 +270,10 @@ function ClientsList() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editClient, setEditClient] = useState<Client | null>(null);
+  const [viewClient, setViewClient] = useState<Client | null>(null);
   const [newClient, setNewClient] = useState({ name: '', phone: '', email: '', address: '' });
+  const [searchTerm, setSearchTerm] = useState('');
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   useEffect(() => {
@@ -275,12 +283,34 @@ function ClientsList() {
     });
   }, []);
 
+  const filteredClients = clients.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.phone.includes(searchTerm) ||
+    c.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await addClient(newClient);
       setShowModal(false);
       setNewClient({ name: '', phone: '', email: '', address: '' });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editClient) return;
+    try {
+      await updateClient(editClient.id, {
+        name: editClient.name,
+        phone: editClient.phone,
+        email: editClient.email,
+        address: editClient.address
+      });
+      setEditClient(null);
     } catch (err) {
       console.error(err);
     }
@@ -313,7 +343,7 @@ function ClientsList() {
       </div>
 
       <AnimatePresence>
-        {showModal && (
+        {editClient && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -322,18 +352,18 @@ function ClientsList() {
               className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100"
             >
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black text-slate-900">New Client</h3>
-                <button onClick={() => setShowModal(false)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
+                <h3 className="text-2xl font-black text-slate-900">Edit Client</h3>
+                <button onClick={() => setEditClient(null)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
               </div>
-              <form onSubmit={handleAddClient} className="space-y-6">
+              <form onSubmit={handleUpdateClient} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Full Identity</label>
                   <input 
                     required
                     type="text" 
                     placeholder="e.g. Rahul Sharma"
-                    value={newClient.name}
-                    onChange={e => setNewClient({...newClient, name: e.target.value})}
+                    value={editClient.name}
+                    onChange={e => setEditClient({...editClient, name: e.target.value})}
                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold placeholder:text-slate-300"
                   />
                 </div>
@@ -343,8 +373,8 @@ function ClientsList() {
                     required
                     type="tel" 
                     placeholder="+91 00000 00000"
-                    value={newClient.phone}
-                    onChange={e => setNewClient({...newClient, phone: e.target.value})}
+                    value={editClient.phone}
+                    onChange={e => setEditClient({...editClient, phone: e.target.value})}
                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold placeholder:text-slate-300"
                   />
                 </div>
@@ -353,15 +383,72 @@ function ClientsList() {
                   <input 
                     type="email" 
                     placeholder="rahul@example.com"
-                    value={newClient.email}
-                    onChange={e => setNewClient({...newClient, email: e.target.value})}
+                    value={editClient.email || ''}
+                    onChange={e => setEditClient({...editClient, email: e.target.value})}
                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold placeholder:text-slate-300"
                   />
                 </div>
-                <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black hover:bg-slate-800 transition-all shadow-xl shadow-slate-200">
-                  Confirm Registration
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Address</label>
+                  <input 
+                    type="text" 
+                    placeholder="Client Address"
+                    value={editClient.address || ''}
+                    onChange={e => setEditClient({...editClient, address: e.target.value})}
+                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold placeholder:text-slate-300"
+                  />
+                </div>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200">
+                  Save Changes
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {viewClient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black text-slate-900">Client Profile</h3>
+                <button onClick={() => setViewClient(null)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="space-y-6">
+                <div className="flex flex-col items-center mb-6">
+                  <div className="w-24 h-24 rounded-[2rem] bg-indigo-600 text-white flex items-center justify-center text-4xl font-black shadow-xl shadow-indigo-200 mb-4">
+                    {viewClient.name?.charAt(0) || '?'}
+                  </div>
+                  <h4 className="text-xl font-black text-slate-900">{viewClient.name}</h4>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{viewClient.email}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-slate-50 p-4 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Phone Number</p>
+                    <p className="font-bold text-slate-700">{viewClient.phone || 'Not provided'}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Address</p>
+                    <p className="font-bold text-slate-700">{viewClient.address || 'Not provided'}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Registration Date</p>
+                    <p className="font-bold text-slate-700">{new Date(viewClient.createdAt).toLocaleString()}</p>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => setViewClient(null)}
+                  className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black hover:bg-slate-800 transition-all"
+                >
+                  Close Profile
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
@@ -373,7 +460,9 @@ function ClientsList() {
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <input 
               type="text" 
-              placeholder="Filter clients by name or phone..." 
+              placeholder="Filter clients by name, email or phone..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-14 pr-6 py-4 bg-white border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 shadow-sm"
             />
           </div>
@@ -390,21 +479,21 @@ function ClientsList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {clients.map((client) => (
+              {filteredClients.map((client) => (
                 <tr key={client.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-110 transition-transform">
-                        {client.name.charAt(0)}
+                        {client.name?.charAt(0) || '?'}
                       </div>
                       <div>
-                        <p className="font-black text-slate-900">{client.name}</p>
+                        <p className="font-black text-slate-900">{client.name || 'Unnamed Client'}</p>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{client.email || 'NO EMAIL'}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-8 py-6">
-                    <span className="font-black text-slate-600 text-sm">{client.phone}</span>
+                    <span className="font-black text-slate-600 text-sm">{client.phone || 'No Phone'}</span>
                   </td>
                   <td className="px-8 py-6">
                     <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Active</span>
@@ -428,10 +517,28 @@ function ClientsList() {
                           className="absolute right-8 top-16 z-10 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2"
                         >
                           <button 
-                            onClick={() => handleDeleteClient(client.id)}
-                            className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                            onClick={() => {
+                              setViewClient(client);
+                              setActiveMenu(null);
+                            }}
+                            className="w-full text-left px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-2"
                           >
-                            Delete Client
+                            <Eye className="w-4 h-4" /> View Profile
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setEditClient(client);
+                              setActiveMenu(null);
+                            }}
+                            className="w-full text-left px-4 py-3 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors flex items-center gap-2"
+                          >
+                            <Edit2 className="w-4 h-4" /> Edit Client
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteClient(client.id)}
+                            className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete Client
                           </button>
                         </motion.div>
                       )}
@@ -609,7 +716,10 @@ function RepairsList() {
                   <p className="text-sm font-black text-slate-900">{new Date(repair.updatedAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex gap-3 mt-6 lg:mt-0">
-                  <button className="p-4 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100">
+                  <button 
+                    onClick={() => alert('Viewing details for repair ' + repair.trackingId)}
+                    className="p-4 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100"
+                  >
                     <FileText className="w-5 h-5" />
                   </button>
                   <button 
@@ -707,8 +817,11 @@ function InvoicesList() {
                     <span className="text-xs font-bold text-slate-400">{new Date(inv.createdAt).toLocaleDateString()}</span>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button className="p-3 bg-white border border-slate-100 rounded-xl text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
-                      <FileText className="w-5 h-5" />
+                    <button 
+                      onClick={() => alert('Downloading invoice ' + inv.invoiceNumber)}
+                      className="p-3 bg-white border border-slate-100 rounded-xl text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                    >
+                      <Download className="w-5 h-5" />
                     </button>
                   </td>
                 </tr>
