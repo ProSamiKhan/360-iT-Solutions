@@ -500,9 +500,6 @@ function RepairsList() {
   const getStatusColor = (status: Repair['status']) => {
     switch (status) {
       case 'Received': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'Diagnosing': return 'bg-amber-50 text-amber-600 border-amber-100';
-      case 'Repairing': return 'bg-indigo-50 text-indigo-600 border-indigo-100';
-      case 'Waiting Parts': return 'bg-red-50 text-red-600 border-red-100';
       case 'Completed': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
       case 'Delivered': return 'bg-slate-100 text-slate-600 border-slate-200';
       default: return 'bg-slate-50 text-slate-600 border-slate-100';
@@ -642,7 +639,7 @@ function RepairsList() {
                 <button onClick={() => setShowStatusModal(null)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
               </div>
               <div className="grid grid-cols-1 gap-3">
-                {['Received', 'Diagnosing', 'Repairing', 'Waiting Parts', 'Completed', 'Delivered'].map((status) => (
+                {['Received', 'Completed', 'Delivered'].map((status) => (
                   <button
                     key={status}
                     onClick={() => handleUpdateStatus(showStatusModal.id, status as Repair['status'])}

@@ -31,7 +31,7 @@ export interface Device {
   createdAt: string;
 }
 
-export type RepairStatus = 'Received' | 'Diagnosing' | 'Repairing' | 'Waiting Parts' | 'Completed' | 'Delivered';
+export type RepairStatus = 'Received' | 'Completed' | 'Delivered';
 
 export interface Repair {
   id: string;

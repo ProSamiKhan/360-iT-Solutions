@@ -32,8 +32,12 @@ export const addClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updat
 };
 
 // Repairs
-export const getRepairs = (callback: (repairs: Repair[]) => void) => {
-  return onSnapshot(query(collection(db, 'repairs'), orderBy('createdAt', 'desc')), (snapshot) => {
+export const getRepairs = (callback: (repairs: Repair[]) => void, clientId?: string) => {
+  let q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
+  if (clientId) {
+    q = query(collection(db, 'repairs'), where('clientId', '==', clientId), orderBy('createdAt', 'desc'));
+  }
+  return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Repair)));
   });
 };
@@ -57,10 +61,29 @@ export const addRepair = async (repair: Omit<Repair, 'id' | 'createdAt' | 'updat
 };
 
 export const updateRepairStatus = async (repairId: string, status: Repair['status']) => {
-  return updateDoc(doc(db, 'repairs', repairId), {
-    status,
-    updatedAt: new Date().toISOString()
-  });
+  const repairRef = doc(db, 'repairs', repairId);
+  const repairSnap = await getDoc(repairRef);
+  
+  if (repairSnap.exists()) {
+    const repairData = repairSnap.data() as Repair;
+    const clientSnap = await getDoc(doc(db, 'clients', repairData.clientId));
+    const clientEmail = clientSnap.exists() ? clientSnap.data().email : null;
+
+    await updateDoc(repairRef, {
+      status,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Send email notification
+    if (clientEmail) {
+      sendEmailNotification(clientEmail, status, repairData.trackingId);
+    }
+  }
+};
+
+const sendEmailNotification = (email: string, status: string, trackingId: string) => {
+  console.log(`[EMAIL NOTIFICATION] To: ${email} | Subject: Repair Status Update | Message: Your repair ${trackingId} is now ${status.toUpperCase()}.`);
+  // In a real app, you would call an email API here (e.g., Resend, SendGrid, etc.)
 };
 
 export const deleteClient = async (clientId: string) => {
@@ -74,7 +97,7 @@ export const seedDemoData = async () => {
   const lastNames = ['Patel', 'Reddy', 'Singh', 'Iyer', 'Khan', 'Sharma', 'Gupta', 'Kapoor', 'Verma', 'Nair', 'Malhotra', 'Joshi', 'Chopra', 'Deshmukh', 'Bose', 'Das', 'Kulkarni', 'Pillai', 'Rao', 'Mehta', 'Pandey', 'Trivedi', 'Saxena', 'Gill', 'Yadav'];
 
   const repairTypes = ['Hardware Repair', 'Software Installation', 'Virus Removal', 'Data Recovery', 'Networking Setup'];
-  const statuses: Repair['status'][] = ['Received', 'Diagnosing', 'Repairing', 'Waiting Parts', 'Completed', 'Delivered'];
+  const statuses: Repair['status'][] = ['Received', 'Completed', 'Delivered'];
 
   for (let i = 0; i < 25; i++) {
     const firstName = firstNames[i % firstNames.length];
@@ -122,8 +145,12 @@ export const seedDemoData = async () => {
 };
 
 // Invoices
-export const getInvoices = (callback: (invoices: Invoice[]) => void) => {
-  return onSnapshot(query(collection(db, 'invoices'), orderBy('createdAt', 'desc')), (snapshot) => {
+export const getInvoices = (callback: (invoices: Invoice[]) => void, clientId?: string) => {
+  let q = query(collection(db, 'invoices'), orderBy('createdAt', 'desc'));
+  if (clientId) {
+    q = query(collection(db, 'invoices'), where('clientId', '==', clientId), orderBy('createdAt', 'desc'));
+  }
+  return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Invoice)));
   });
 };

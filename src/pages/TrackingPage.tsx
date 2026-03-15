@@ -35,9 +35,6 @@ export default function TrackingPage() {
 
   const statusSteps = [
     { status: 'Received', icon: <Package className="w-5 h-5" />, label: 'Device Received' },
-    { status: 'Diagnosing', icon: <Search className="w-5 h-5" />, label: 'Diagnosing' },
-    { status: 'Repairing', icon: <SettingsIcon />, label: 'Repairing' },
-    { status: 'Waiting Parts', icon: <Clock className="w-5 h-5" />, label: 'Waiting Parts' },
     { status: 'Completed', icon: <CheckCircle2 className="w-5 h-5" />, label: 'Repair Completed' },
     { status: 'Delivered', icon: <Truck className="w-5 h-5" />, label: 'Delivered' },
   ];

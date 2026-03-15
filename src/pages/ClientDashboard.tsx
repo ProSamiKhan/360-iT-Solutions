@@ -32,18 +32,14 @@ function MyRepairs({ user }: { user: UserProfile }) {
   const [repairs, setRepairs] = useState<Repair[]>([]);
 
   useEffect(() => {
-    // In a real app, we'd filter by clientId on the server
     return getRepairs((data) => {
-      // For demo, we'll filter here. In production, use a proper query.
       setRepairs(data); 
-    });
-  }, []);
+    }, user.uid);
+  }, [user.uid]);
 
   const getStatusIcon = (status: Repair['status']) => {
     switch (status) {
       case 'Received': return <Package className="w-5 h-5" />;
-      case 'Diagnosing': return <Clock className="w-5 h-5" />;
-      case 'Repairing': return <Wrench className="w-5 h-5" />;
       case 'Completed': return <CheckCircle2 className="w-5 h-5" />;
       case 'Delivered': return <Truck className="w-5 h-5" />;
       default: return <AlertCircle className="w-5 h-5" />;
@@ -98,8 +94,8 @@ function MyInvoices({ user }: { user: UserProfile }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
-    return getInvoices(setInvoices);
-  }, []);
+    return getInvoices(setInvoices, user.uid);
+  }, [user.uid]);
 
   return (
     <div className="space-y-8">
