@@ -16,7 +16,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log("App: Subscribing to auth...");
     const unsubscribe = subscribeToAuth((userProfile) => {
+      console.log("App: Auth state updated", userProfile?.role || 'null');
       setUser(userProfile);
       setLoading(false);
     });

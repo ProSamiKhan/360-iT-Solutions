@@ -103,15 +103,29 @@ export const signUpWithEmail = async (email: string, password: string, displayNa
 
 export const loginWithEmail = async (email: string, password: string) => {
   try {
+    console.log("Attempting email login for:", email);
     const result = await signInWithEmailAndPassword(auth, email, password);
     const user = result.user;
+    console.log("Firebase Auth success for:", user.uid);
     
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (userDoc.exists()) {
+      console.log("User profile found in Firestore");
       return userDoc.data() as UserProfile;
     }
-    return null;
-  } catch (error) {
+    
+    console.log("User profile missing in Firestore, creating default...");
+    const newUser: UserProfile = {
+      uid: user.uid,
+      email: user.email || '',
+      displayName: user.displayName || 'User',
+      role: user.email === '4tvsami@gmail.com' ? 'admin' : 'client',
+      phoneNumber: user.phoneNumber || null,
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'users', user.uid), newUser);
+    return newUser;
+  } catch (error: any) {
     console.error("Login error:", error);
     throw error;
   }
@@ -129,34 +143,49 @@ export const resetPassword = async (email: string) => {
 export const subscribeToAuth = (callback: (user: UserProfile | null) => void) => {
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
+      console.log("Auth state changed: User logged in", user.uid);
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
+        let userData: UserProfile;
+
         if (userDoc.exists()) {
-          const userData = userDoc.data() as UserProfile;
-          
-          // Ensure client document exists if role is client
-          if (userData.role === 'client') {
-            const clientDoc = await getDoc(doc(db, 'clients', user.uid));
-            if (!clientDoc.exists()) {
-              await setDoc(doc(db, 'clients', user.uid), {
-                name: userData.displayName || 'Unnamed Client',
-                email: userData.email,
-                phone: userData.phoneNumber || '',
-                createdAt: userData.createdAt,
-                updatedAt: userData.createdAt
-              });
-            }
-          }
-          
-          callback(userData);
+          userData = userDoc.data() as UserProfile;
+          console.log("Auth subscription: Profile found", userData.role);
         } else {
-          callback(null);
+          console.log("Auth subscription: Profile missing, auto-creating...");
+          userData = {
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || 'User',
+            role: user.email === '4tvsami@gmail.com' ? 'admin' : 'client',
+            phoneNumber: user.phoneNumber || null,
+            createdAt: new Date().toISOString()
+          };
+          await setDoc(doc(db, 'users', user.uid), userData);
         }
+        
+        // Ensure client document exists if role is client
+        if (userData.role === 'client') {
+          const clientDoc = await getDoc(doc(db, 'clients', user.uid));
+          if (!clientDoc.exists()) {
+            console.log("Auth subscription: Client doc missing, creating...");
+            await setDoc(doc(db, 'clients', user.uid), {
+              name: userData.displayName || 'Unnamed Client',
+              email: userData.email,
+              phone: userData.phoneNumber || '',
+              createdAt: userData.createdAt,
+              updatedAt: userData.createdAt
+            });
+          }
+        }
+        
+        callback(userData);
       } catch (error) {
         console.error("Auth subscription error:", error);
         callback(null);
       }
     } else {
+      console.log("Auth state changed: User logged out");
       callback(null);
     }
   });

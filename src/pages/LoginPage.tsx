@@ -22,9 +22,7 @@ export default function LoginPage() {
     setMessage(null);
     try {
       const user = await loginWithGoogle();
-      if (user) {
-        navigate(user.role === 'admin' ? '/admin' : '/client');
-      }
+      // Redirection handled by App.tsx
     } catch (err: any) {
       console.error("Google Login Error:", err);
       if (err.code === 'auth/popup-blocked') {
@@ -48,9 +46,7 @@ export default function LoginPage() {
     try {
       if (mode === 'login') {
         const user = await loginWithEmail(email, password);
-        if (user) {
-          navigate(user.role === 'admin' ? '/admin' : '/client');
-        } else {
+        if (!user) {
           setError("User profile not found.");
         }
       } else if (mode === 'signup') {
@@ -59,10 +55,7 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
-        const user = await signUpWithEmail(email, password, displayName);
-        if (user) {
-          navigate('/client');
-        }
+        await signUpWithEmail(email, password, displayName);
       } else if (mode === 'reset') {
         await resetPassword(email);
         setMessage("Password reset email sent! Please check your inbox.");
