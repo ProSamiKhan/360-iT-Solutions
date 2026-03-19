@@ -23,7 +23,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, user }: DashboardLayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -31,11 +31,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard', path: '/admin' },
     { icon: <Users className="w-5 h-5" />, label: 'Clients', path: '/admin/clients' },
     { icon: <Wrench className="w-5 h-5" />, label: 'Repairs', path: '/admin/repairs' },
-    { icon: <FileText className="w-5 h-5" />, label: 'Invoices', path: '/admin/invoices' },
-    { icon: <CreditCard className="w-5 h-5" />, label: 'Payments', path: '/admin/payments' },
-    { icon: <BarChart3 className="w-5 h-5" />, label: 'Reports', path: '/admin/reports' },
-    { icon: <Bell className="w-5 h-5" />, label: 'Notifications', path: '/admin/notifications' },
-    { icon: <Settings className="w-5 h-5" />, label: 'Settings', path: '/admin/settings' },
+    { icon: <FileText className="w-5 h-5" />, label: 'Ledger', path: '/admin/invoices' },
   ];
 
   const clientMenu = [
@@ -51,8 +47,18 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     navigate('/');
   };
 
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 transition-transform duration-300 transform
@@ -60,11 +66,19 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         lg:translate-x-0
       `}>
         <div className="h-full flex flex-col">
-          <div className="p-8 flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-100">
-              <Cpu className="text-white w-6 h-6" />
+          <div className="p-8 flex items-center justify-between lg:justify-start gap-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-100">
+                <Cpu className="text-white w-6 h-6" />
+              </div>
+              <span className="text-xl font-bold tracking-tight text-slate-900">360 iT</span>
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">360 iT</span>
+            <button 
+              className="lg:hidden p-2 text-slate-400 hover:text-slate-600"
+              onClick={closeSidebar}
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
 
           <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
@@ -74,6 +88,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                 <Link
                   key={item.path}
                   to={item.path}
+                  onClick={closeSidebar}
                   className={`
                     flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all
                     ${isActive 
@@ -107,15 +122,15 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-8 sticky top-0 z-40">
+        <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-40">
           <button 
             className="lg:hidden p-2 hover:bg-slate-50 rounded-xl"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
-            {isSidebarOpen ? <X /> : <Menu />}
+            <Menu />
           </button>
           
-          <div className="flex-1 px-8 hidden md:block">
+          <div className="flex-1 px-4 md:px-8 hidden md:block">
             <div className="relative max-w-md">
               <input 
                 type="text" 
@@ -139,7 +154,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
           </div>
         </header>
 
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           {children}
         </main>
       </div>

@@ -143,16 +143,17 @@ export const resetPassword = async (email: string) => {
 export const subscribeToAuth = (callback: (user: UserProfile | null) => void) => {
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
-      console.log("Auth state changed: User logged in", user.uid);
+      console.log("Auth state changed: User logged in", user.uid, user.email);
       try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
         let userData: UserProfile;
 
         if (userDoc.exists()) {
           userData = userDoc.data() as UserProfile;
-          console.log("Auth subscription: Profile found", userData.role);
+          console.log("Auth subscription: Profile found for", userData.email, "Role:", userData.role);
         } else {
-          console.log("Auth subscription: Profile missing, auto-creating...");
+          console.log("Auth subscription: Profile missing for", user.email, "auto-creating...");
           userData = {
             uid: user.uid,
             email: user.email || '',
@@ -161,27 +162,36 @@ export const subscribeToAuth = (callback: (user: UserProfile | null) => void) =>
             phoneNumber: user.phoneNumber || null,
             createdAt: new Date().toISOString()
           };
-          await setDoc(doc(db, 'users', user.uid), userData);
+          await setDoc(userRef, userData);
+          console.log("Auth subscription: Profile created successfully");
         }
         
         // Ensure client document exists if role is client
         if (userData.role === 'client') {
-          const clientDoc = await getDoc(doc(db, 'clients', user.uid));
+          const clientRef = doc(db, 'clients', user.uid);
+          const clientDoc = await getDoc(clientRef);
           if (!clientDoc.exists()) {
-            console.log("Auth subscription: Client doc missing, creating...");
-            await setDoc(doc(db, 'clients', user.uid), {
+            console.log("Auth subscription: Client doc missing for", user.uid, "creating...");
+            await setDoc(clientRef, {
               name: userData.displayName || 'Unnamed Client',
               email: userData.email,
               phone: userData.phoneNumber || '',
               createdAt: userData.createdAt,
               updatedAt: userData.createdAt
             });
+            console.log("Auth subscription: Client doc created successfully");
+          } else {
+            console.log("Auth subscription: Client doc already exists");
           }
         }
         
         callback(userData);
-      } catch (error) {
-        console.error("Auth subscription error:", error);
+      } catch (error: any) {
+        console.error("Auth subscription error details:", {
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        });
         callback(null);
       }
     } else {

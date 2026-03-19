@@ -66,7 +66,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         <Route path="/" element={<Overview />} />
         <Route path="/clients" element={<ClientsList />} />
         <Route path="/repairs" element={<RepairsList />} />
-        <Route path="/invoices" element={<InvoicesList />} />
       </Routes>
     </DashboardLayout>
   );
@@ -184,84 +183,103 @@ function Overview() {
           </motion.div>
         ))}
       </div>
+    </div>
+  );
+}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-          <div className="flex justify-between items-center mb-10">
-            <div>
-              <h3 className="text-xl font-black text-slate-900">Revenue Velocity</h3>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Weekly growth trajectory</p>
-            </div>
-            <div className="flex bg-slate-50 p-1 rounded-xl">
-              <button className="px-4 py-1.5 text-xs font-bold bg-white rounded-lg shadow-sm">Revenue</button>
-              <button className="px-4 py-1.5 text-xs font-bold text-slate-400">Repairs</button>
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 700, fill: '#94a3b8'}} dy={15} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 700, fill: '#94a3b8'}} />
-                <Tooltip 
-                  cursor={{ stroke: '#6366f1', strokeWidth: 2 }}
-                  contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '16px' }}
-                />
-                <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+function ClientProfileModal({ client, onClose }: { client: Client, onClose: () => void }) {
+  const [history, setHistory] = useState<Repair[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    return getRepairs((data) => {
+      setHistory(data);
+      setLoading(false);
+    }, client.id);
+  }, [client.id]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 max-w-2xl w-full shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex justify-between items-center mb-6 md:mb-8">
+          <h3 className="text-xl md:text-2xl font-black text-slate-900">Client Profile</h3>
+          <button onClick={onClose} className="p-2 md:p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
         </div>
-
-        <div className="bg-slate-900 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/20 blur-3xl rounded-full -mr-16 -mt-16"></div>
-          <h3 className="text-xl font-black mb-2">Tech Performance</h3>
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-8">Repair distribution</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-8 md:mb-10">
+          <div className="md:col-span-1 flex flex-col items-center">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2rem] md:rounded-[2.5rem] bg-indigo-600 text-white flex items-center justify-center text-4xl md:text-5xl font-black shadow-xl shadow-indigo-200 mb-4">
+              {client.name?.charAt(0) || '?'}
+            </div>
+            <h4 className="text-lg md:text-xl font-black text-slate-900 text-center">{client.name}</h4>
+            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest text-center mt-1 truncate max-w-full">{client.email}</p>
+          </div>
           
-          <div className="h-64 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={techPerformance}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={8}
-                  dataKey="value"
-                >
-                  {techPerformance.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-3xl font-black">100%</span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Efficiency</span>
+          <div className="md:col-span-2 grid grid-cols-1 gap-3 md:gap-4">
+            <div className="bg-slate-50 p-4 md:p-5 rounded-2xl">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Phone Number</p>
+              <p className="font-bold text-slate-700 text-sm md:text-base">{client.phone || 'Not provided'}</p>
+            </div>
+            <div className="bg-slate-50 p-4 md:p-5 rounded-2xl">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Address</p>
+              <p className="font-bold text-slate-700 text-sm md:text-base">{client.address || 'Not provided'}</p>
+            </div>
+            <div className="bg-slate-50 p-4 md:p-5 rounded-2xl">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Registration Date</p>
+              <p className="font-bold text-slate-700 text-sm md:text-base">{new Date(client.createdAt).toLocaleString()}</p>
             </div>
           </div>
-
-          <div className="space-y-4 mt-8">
-            {techPerformance.map((tech, i) => (
-              <div key={i} className="flex justify-between items-center p-3 bg-white/5 rounded-2xl border border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i] }}></div>
-                  <span className="text-sm font-bold">{tech.name}</span>
-                </div>
-                <span className="text-xs font-black text-slate-400">{tech.value}%</span>
-              </div>
-            ))}
-          </div>
         </div>
-      </div>
+
+        <div className="space-y-6">
+          <h5 className="text-lg font-black text-slate-900 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-indigo-600" />
+            Service History
+          </h5>
+          
+          {loading ? (
+            <div className="py-10 text-center text-slate-400 font-bold text-sm">Loading history...</div>
+          ) : history.length === 0 ? (
+            <div className="py-10 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-100">
+              <p className="text-slate-400 font-bold text-sm">No repair history found for this client.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {history.map((repair) => (
+                <div key={repair.id} className="p-5 bg-slate-50 rounded-3xl border border-slate-100 flex justify-between items-center">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{repair.trackingId}</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">•</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(repair.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p className="font-black text-slate-900">{repair.serviceType}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                    repair.status === 'Delivered' ? 'bg-slate-200 text-slate-600' :
+                    repair.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
+                    'bg-blue-50 text-blue-600'
+                  }`}>
+                    {repair.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <button 
+          onClick={onClose}
+          className="w-full mt-10 bg-slate-900 text-white py-5 rounded-2xl font-black hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+        >
+          Close Profile
+        </button>
+      </motion.div>
     </div>
   );
 }
@@ -274,7 +292,6 @@ function ClientsList() {
   const [viewClient, setViewClient] = useState<Client | null>(null);
   const [newClient, setNewClient] = useState({ name: '', phone: '', email: '', address: '' });
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   useEffect(() => {
     return getClients((data) => {
@@ -320,7 +337,6 @@ function ClientsList() {
     if (confirm('Are you sure you want to delete this client?')) {
       try {
         await deleteClient(id);
-        setActiveMenu(null);
       } catch (err) {
         console.error(err);
       }
@@ -349,11 +365,11 @@ function ClientsList() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100"
+              className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 max-w-md w-full shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black text-slate-900">Edit Client</h3>
-                <button onClick={() => setEditClient(null)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
+              <div className="flex justify-between items-center mb-6 md:mb-8">
+                <h3 className="text-xl md:text-2xl font-black text-slate-900">Edit Client</h3>
+                <button onClick={() => setEditClient(null)} className="p-2 md:p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
               </div>
               <form onSubmit={handleUpdateClient} className="space-y-6">
                 <div className="space-y-2">
@@ -407,67 +423,29 @@ function ClientsList() {
         )}
 
         {viewClient && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100"
-            >
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black text-slate-900">Client Profile</h3>
-                <button onClick={() => setViewClient(null)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
-              </div>
-              <div className="space-y-6">
-                <div className="flex flex-col items-center mb-6">
-                  <div className="w-24 h-24 rounded-[2rem] bg-indigo-600 text-white flex items-center justify-center text-4xl font-black shadow-xl shadow-indigo-200 mb-4">
-                    {viewClient.name?.charAt(0) || '?'}
-                  </div>
-                  <h4 className="text-xl font-black text-slate-900">{viewClient.name}</h4>
-                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{viewClient.email}</p>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-2xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Phone Number</p>
-                    <p className="font-bold text-slate-700">{viewClient.phone || 'Not provided'}</p>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Address</p>
-                    <p className="font-bold text-slate-700">{viewClient.address || 'Not provided'}</p>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Registration Date</p>
-                    <p className="font-bold text-slate-700">{new Date(viewClient.createdAt).toLocaleString()}</p>
-                  </div>
-                </div>
-                
-                <button 
-                  onClick={() => setViewClient(null)}
-                  className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black hover:bg-slate-800 transition-all"
-                >
-                  Close Profile
-                </button>
-              </div>
-            </motion.div>
-          </div>
+          <ClientProfileModal 
+            client={viewClient} 
+            onClose={() => setViewClient(null)} 
+          />
         )}
       </AnimatePresence>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+      <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-4 md:p-8 border-b border-slate-50 bg-slate-50/30">
           <div className="relative max-w-md">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <Search className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 md:w-5 md:h-5" />
             <input 
               type="text" 
-              placeholder="Filter clients by name, email or phone..." 
+              placeholder="Search clients..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-14 pr-6 py-4 bg-white border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 shadow-sm"
+              className="w-full pl-10 md:pl-14 pr-4 md:pr-6 py-3 md:py-4 bg-white border-none rounded-xl md:rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 shadow-sm"
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">
               <tr>
@@ -501,53 +479,81 @@ function ClientsList() {
                   <td className="px-8 py-6">
                     <span className="text-xs font-bold text-slate-400">{new Date(client.createdAt).toLocaleDateString()}</span>
                   </td>
-                  <td className="px-8 py-6 text-right relative">
-                    <button 
-                      onClick={() => setActiveMenu(activeMenu === client.id ? null : client.id)}
-                      className="p-3 hover:bg-white rounded-xl transition-all text-slate-300 hover:text-indigo-600 shadow-sm border border-transparent hover:border-slate-100"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                    <AnimatePresence>
-                      {activeMenu === client.id && (
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                          className="absolute right-8 top-16 z-10 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2"
-                        >
-                          <button 
-                            onClick={() => {
-                              setViewClient(client);
-                              setActiveMenu(null);
-                            }}
-                            className="w-full text-left px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-2"
-                          >
-                            <Eye className="w-4 h-4" /> View Profile
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setEditClient(client);
-                              setActiveMenu(null);
-                            }}
-                            className="w-full text-left px-4 py-3 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors flex items-center gap-2"
-                          >
-                            <Edit2 className="w-4 h-4" /> Edit Client
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteClient(client.id)}
-                            className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
-                          >
-                            <Trash2 className="w-4 h-4" /> Delete Client
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                  <td className="px-8 py-6 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button 
+                        onClick={() => setViewClient(client)}
+                        className="p-3 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-transparent hover:border-indigo-100"
+                        title="View Profile"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => setEditClient(client)}
+                        className="p-3 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-transparent hover:border-indigo-100"
+                        title="Edit Client"
+                      >
+                        <Edit2 className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteClient(client.id)}
+                        className="p-3 bg-slate-50 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
+                        title="Delete Client"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-slate-50">
+          {filteredClients.map((client) => (
+            <div key={client.id} className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs">
+                    {client.name?.charAt(0) || '?'}
+                  </div>
+                  <div>
+                    <p className="font-black text-slate-900 text-sm">{client.name || 'Unnamed Client'}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[150px]">{client.email || 'NO EMAIL'}</p>
+                  </div>
+                </div>
+                <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-black uppercase tracking-widest">Active</span>
+              </div>
+              
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-500">{client.phone || 'No Phone'}</span>
+                <span className="text-slate-400">{new Date(client.createdAt).toLocaleDateString()}</span>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setViewClient(client)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                >
+                  <Eye className="w-4 h-4" /> View
+                </button>
+                <button 
+                  onClick={() => setEditClient(client)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                >
+                  <Edit2 className="w-4 h-4" /> Edit
+                </button>
+                <button 
+                  onClick={() => handleDeleteClient(client.id)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -635,11 +641,11 @@ function RepairsList() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100"
+              className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 max-w-md w-full shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black text-slate-900">New Repair Job</h3>
-                <button onClick={() => setShowModal(false)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
+              <div className="flex justify-between items-center mb-6 md:mb-8">
+                <h3 className="text-xl md:text-2xl font-black text-slate-900">New Repair Job</h3>
+                <button onClick={() => setShowModal(false)} className="p-2 md:p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
               </div>
               <form onSubmit={handleAddRepair} className="space-y-6">
                 <div className="space-y-2">
@@ -692,41 +698,41 @@ function RepairsList() {
           <motion.div 
             key={repair.id} 
             whileHover={{ scale: 1.01 }}
-            className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group"
+            className="bg-white p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group"
           >
-            <div className="flex flex-col lg:flex-row justify-between gap-8">
-              <div className="flex gap-8">
-                <div className="bg-slate-900 p-4 rounded-3xl flex items-center justify-center flex-shrink-0 shadow-xl shadow-slate-200">
+            <div className="flex flex-col lg:flex-row justify-between gap-6 md:gap-8">
+              <div className="flex flex-col sm:flex-row gap-6 md:gap-8">
+                <div className="bg-slate-900 p-4 rounded-2xl md:rounded-3xl flex items-center justify-center flex-shrink-0 shadow-xl shadow-slate-200 w-fit mx-auto sm:mx-0">
                   <QRCodeSVG value={repair.trackingId} size={64} fgColor="#FFFFFF" bgColor="transparent" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
+                <div className="text-center sm:text-left">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 md:gap-3 mb-2">
                     <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] bg-indigo-50 px-3 py-1 rounded-lg">{repair.trackingId}</span>
                     <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${getStatusColor(repair.status)}`}>
                       {repair.status}
                     </span>
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900">{repair.serviceType}</h3>
-                  <p className="text-slate-500 font-medium mt-2 max-w-xl">{repair.problemDescription}</p>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-900">{repair.serviceType}</h3>
+                  <p className="text-slate-500 text-sm md:text-base font-medium mt-2 max-w-xl">{repair.problemDescription}</p>
                 </div>
               </div>
-              <div className="flex flex-col items-end justify-between border-t lg:border-t-0 lg:border-l border-slate-50 pt-6 lg:pt-0 lg:pl-8">
-                <div className="text-right">
+              <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between border-t lg:border-t-0 lg:border-l border-slate-50 pt-6 lg:pt-0 lg:pl-8">
+                <div className="text-left lg:text-right">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Sync</p>
                   <p className="text-sm font-black text-slate-900">{new Date(repair.updatedAt).toLocaleDateString()}</p>
                 </div>
-                <div className="flex gap-3 mt-6 lg:mt-0">
+                <div className="flex gap-2 md:gap-3">
                   <button 
                     onClick={() => alert('Viewing details for repair ' + repair.trackingId)}
-                    className="p-4 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100"
+                    className="p-3 md:p-4 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl md:rounded-2xl transition-all border border-transparent hover:border-indigo-100"
                   >
                     <FileText className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={() => setShowStatusModal(repair)}
-                    className="px-6 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                    className="px-4 md:px-6 py-3 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
                   >
-                    Update Status
+                    Update
                   </button>
                 </div>
               </div>
@@ -742,11 +748,11 @@ function RepairsList() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100"
+              className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 max-w-md w-full shadow-2xl border border-slate-100"
             >
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black text-slate-900">Update Status</h3>
-                <button onClick={() => setShowStatusModal(null)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
+              <div className="flex justify-between items-center mb-6 md:mb-8">
+                <h3 className="text-xl md:text-2xl font-black text-slate-900">Update Status</h3>
+                <button onClick={() => setShowStatusModal(null)} className="p-2 md:p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
               </div>
               <div className="grid grid-cols-1 gap-3">
                 {['Received', 'Completed', 'Delivered'].map((status) => (
@@ -771,65 +777,3 @@ function RepairsList() {
   );
 }
 
-function InvoicesList() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-
-  useEffect(() => {
-    return getInvoices(setInvoices);
-  }, []);
-
-  return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Ledger</h2>
-          <p className="text-slate-500 text-sm font-medium">Financial records and billing history.</p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">
-              <tr>
-                <th className="px-8 py-6">Reference</th>
-                <th className="px-8 py-6">Value</th>
-                <th className="px-8 py-6">Status</th>
-                <th className="px-8 py-6">Timestamp</th>
-                <th className="px-8 py-6 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-8 py-6">
-                    <span className="font-black text-slate-900">{inv.invoiceNumber}</span>
-                  </td>
-                  <td className="px-8 py-6">
-                    <span className="text-lg font-black text-slate-900">₹{inv.totalAmount.toLocaleString()}</span>
-                  </td>
-                  <td className="px-8 py-6">
-                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${inv.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                      {inv.paymentStatus}
-                    </span>
-                  </td>
-                  <td className="px-8 py-6">
-                    <span className="text-xs font-bold text-slate-400">{new Date(inv.createdAt).toLocaleDateString()}</span>
-                  </td>
-                  <td className="px-8 py-6 text-right">
-                    <button 
-                      onClick={() => alert('Downloading invoice ' + inv.invoiceNumber)}
-                      className="p-3 bg-white border border-slate-100 rounded-xl text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                    >
-                      <Download className="w-5 h-5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
